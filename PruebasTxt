@@ -1,0 +1,22 @@
+Emisor escribe:
+	
+	sem_emisor.down()			sem_emisor 5 -> 4
+        copia = contadorEmisores
+        escribir(mod(copia))
+        contadorEmisores += 1
+	sem_recept.up()				sem_recept 0 -> 1
+	
+Receptor lee:
+
+	sem_recept.down()			sem_recept 1 -> 0
+	leer(mod(contadorReceptores))
+	contadorReceptores += 1
+	sem_emisor.up() 			sem_emisor 4 -> 5
+
+
+    emisor -l "asd" -n 5 
+
+    int argc, char* argv[]
+
+    argc = 3
+    argv = [emisor, -l, "asd", -n, 5]
