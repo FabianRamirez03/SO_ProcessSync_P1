@@ -11,7 +11,10 @@ all:
 	gcc receptor.o -lpthread -lrt -lncurses -lm -o out/receptor
 	rm receptor.o
 
+	gcc -c src/finalizador.c
+	gcc finalizador.o -lpthread -lrt -lncurses -lm -o out/finalizador
+	rm finalizador.o
+
 	find /dev/shm/ -mindepth 1 -delete
 
 	./out/inicializador -n "prueba" -b 10 -k 25
-	./out/emisor -n "prueba" -k 25 -m

@@ -130,6 +130,7 @@ int main(int argc, char* argv[]) {
     informacion_compartida->celdas_buffer = celdas_buffer;
 	informacion_compartida->tamano_archivo = tamano_entrada;
 	informacion_compartida->tamano_info_compartida = tamano_info_compartida;
+    informacion_compartida->memoriaUtilizada = tamano_total;
 
 	//---------------------------------------------------------Lectura del archivo y guarda en buffer ----------------------------------------------------
 	
@@ -216,6 +217,8 @@ void inicializarInformacionCompartida(struct informacionCompartida* informacion_
 	informacion_compartida->llave = 0;
 
     informacion_compartida->terminacionProcesos = 0;
+
+    informacion_compartida->memoriaUtilizada = 0;
 
     return;
 }

@@ -11,6 +11,7 @@
 #include <sys/select.h>
 #include "tools.h"
 #include <time.h>
+#include <signal.h>
 
 
 // semaforos por inicializar
@@ -25,6 +26,8 @@ int obtenerValoresCompartidos(char *nombreMemComp);
 int ejecutar(void);
 int modoEjecucion(int modo);
 int actualizarArchivoSalida(int i, char letra);
+void finalizarSignal(int sig);
+void finalizar(void);
 
 
 // variables para lectura
@@ -40,6 +43,7 @@ int llave = -1;
 
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, finalizarSignal);
     // Inicializa las variables
     char nombre_buffer[50];
     char nombre_sem_emisores[50];
@@ -92,9 +96,7 @@ int main(int argc, char *argv[])
         printf("Error al determinar el nombre o la llave del emisor\n");
         return 1;
     }
-	printf("Se procede a inicializar los semaforos\n");
     inicializarSemaforos(nombre_sem_emisores, nombre_sem_receptores, nombre_sem_archivo_salida, nombre_sem_info_compartida);
-	printf("Se inicializan semaforos\n");
     // se toma el control del semaforo para aumentar el contador de creacion de emisores
     sem_wait(sem_info_compartida);
 	obtenerValoresCompartidos(nombre_buffer);
@@ -190,7 +192,7 @@ int modoEjecucion(int modo)
             ejecutar();
             ejecucion = informacion_compartida_receptor->terminacionProcesos;
         }
-		return 0;
+        finalizar();
     }
 
     else
@@ -202,6 +204,9 @@ int modoEjecucion(int modo)
 
         while (ejecucion == 0)
         {
+            
+            ejecucion = informacion_compartida_receptor->terminacionProcesos;
+            printf("Ejecucion: %d\n", ejecucion);
             // Monitorear la entrada estándar y la salida estándar
             int ready = select(STDIN_FILENO + 1, &fds, NULL, NULL, NULL);
             if (ready == -1)
@@ -227,7 +232,7 @@ int modoEjecucion(int modo)
                 }
                 else if (input[0] == 'x')
                 {
-                    printf("Se deberia de terminar el proceso\n");
+                    finalizar();
                 }
                 
                 else
@@ -236,7 +241,7 @@ int modoEjecucion(int modo)
                 }
             }
         }
-		return 0;
+		finalizar();
     }
 }
 
@@ -334,4 +339,16 @@ int actualizarArchivoSalida(int i, char letra){
 	sem_post(sem_archivo_salida);
 
 	return 0;
+}
+
+void finalizarSignal(int sig) {
+    finalizar();
+}
+
+void finalizar(void) {
+    printf("Finalizando receptor.\n");
+    sem_wait(sem_info_compartida);
+    informacion_compartida_receptor->receptores_vivos --;
+    sem_post(sem_info_compartida);
+    exit(0);
 }

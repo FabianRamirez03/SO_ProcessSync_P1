@@ -11,6 +11,7 @@
 #include <sys/select.h>
 #include "tools.h"
 #include <time.h>
+#include <signal.h>
 
 // semaforos por inicializar
 sem_t *sem_emisores;
@@ -22,6 +23,9 @@ int inicializarSemaforos(char *nombre_sem_emisores, char *nombre_sem_receptores,
 int obtenerValoresCompartidos(char *nombreMemComp);
 void ejecutar(void);
 int modoEjecucion(int modo);
+void finalizarSignal(int sig);
+void finalizar(void);
+
 
 // variables para lectura
 int indiceLectura;
@@ -36,6 +40,7 @@ int llave = -1;
 
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, finalizarSignal);
     // Inicializa las variables
     char nombre_buffer[50];
     char nombre_sem_emisores[50];
@@ -182,7 +187,9 @@ int modoEjecucion(int modo)
             sleep(3);
             ejecutar();
             ejecucion = informacion_compartida_emisor->terminacionProcesos;
+            p
         }
+        finalizar();
     }
 
     else
@@ -194,6 +201,8 @@ int modoEjecucion(int modo)
 
         while (ejecucion == 0)
         {
+            ejecucion = informacion_compartida_emisor->terminacionProcesos;
+            printf("Ejecucion: %d\n", ejecucion);
             // Monitorear la entrada estándar y la salida estándar
             int ready = select(STDIN_FILENO + 1, &fds, NULL, NULL, NULL);
             if (ready == -1)
@@ -228,6 +237,7 @@ int modoEjecucion(int modo)
                 }
             }
         }
+        finalizar();
     }
 }
 
@@ -286,4 +296,16 @@ void ejecutar(void)
         printf("****************************************************************************************\n");
         color("Negro");
     }
+}
+
+
+void finalizarSignal(int sig) {
+    finalizar();
+}
+void finalizar(void) {
+    printf("Finalizando emisor.\n");
+    sem_wait(sem_info_compartida);
+    informacion_compartida_emisor->emisores_vivos --;
+    sem_post(sem_info_compartida);
+    exit(0);
 }
