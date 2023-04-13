@@ -8,8 +8,9 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "informacionCompartida.h"
-#include <curses.h> //talvez quitar
 #include <sys/select.h>
+#include "tools.h"
+#include <time.h>
 
 
 // semaforos por inicializar
@@ -45,6 +46,7 @@ int main(int argc, char *argv[])
     char nombre_sem_receptores[50];
 	char nombre_sem_archivo_salida[50];
     char nombre_sem_info_compartida[50];
+    color("Negro");
     // Inicializa los parametros a valores incorrectos que deberan ser cambiados
     strcpy(nombre_buffer, "");
 
@@ -244,7 +246,13 @@ int ejecutar(void)
     int espacioLectura= 0;
     char letra;
     char letraEncriptada;
-	printf("*************************************\n");
+	time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+    color("Azul");
+    printf("****************************************************************************************\n");
+
+    color("Morado");
+    printf("  %s ",asctime(tm_info));
     // logica de lectura y escritura con semaforos
     sem_wait(sem_info_compartida);
     contador_receptores = informacion_compartida_receptor->contador_receptores;
@@ -254,7 +262,7 @@ int ejecutar(void)
 	}
     sem_post(sem_info_compartida);
 
-	printf("contador Receptores %d\nEspacio Lectura %d\nTamano archivo %d\n",contador_receptores, espacioLectura, tamanioArchivo);
+	printf("\033[0;36m Contador Receptores: \033[0;32m%d\n \033[0;36m Espacio Lectura: \033[0;32m%d\n \033[0;36m Tamaño archivo: \033[0;32m%d\n",contador_receptores, espacioLectura, tamanioArchivo);
 
     if (contador_receptores < tamanioArchivo)
     {	
@@ -264,8 +272,8 @@ int ejecutar(void)
 		sem_getvalue(sem_emisores, &emisores);
 		sem_getvalue(sem_receptores, &recep);
 
-		printf("Valor del semaforo emisores antes: %d\n", emisores);
-		printf("Valor del semaforo receptores antes: %d\n", recep);
+		printf("\033[0;36m  Valor del semaforo emisores antes: \033[0;32m%d\n", emisores);
+		printf("\033[0;36m  Valor del semaforo receptores antes: \033[0;32m%d\n", recep);
         sem_post(sem_emisores);
         // post al semaforo de receptores
         sem_wait(sem_receptores);
@@ -273,24 +281,26 @@ int ejecutar(void)
 
 		// Obtengo la letra encriptada del buffer
 		letraEncriptada = buffer[espacioLectura];
-		printf("Letra encriptada %c\n", letraEncriptada);
+		printf("\033[0;36m  Letra encriptada: \033[0;32m %c\n", letraEncriptada);
 		// Vacio el buffer
         buffer[espacioLectura] = ' ';
 
 		// desencripto la letra
         letra = letraEncriptada ^ llave;
 
-		printf("Letra desencriptada %c\n", letra);
+		printf("\033[0;36m  Letra desencriptada: \033[0;32m %c\n", letra);
 
 		actualizarArchivoSalida(contador_receptores, letra);
 
 		sem_getvalue(sem_emisores, &emisores);
 		sem_getvalue(sem_receptores, &recep);
 
-		printf("Valor del semaforo emisores despues: %d\n", emisores);
-		printf("Valor del semaforo receptores despues: %d\n", recep);
+		printf("\033[0;36m  Valor del semaforo emisores despues: \033[0;32m %d\n", emisores);
+		printf("\033[0;36m  Valor del semaforo receptores despues: \033[0;32m%d\n", recep);
 
-       printf("*************************************\n");
+        color("Azul");
+        printf("****************************************************************************************\n");
+        color("Negro");
 		return 0;
 	}
 }
@@ -299,7 +309,7 @@ int actualizarArchivoSalida(int i, char letra){
 	FILE *file;
 	int file_size = tamanioArchivo;
 	
-	printf("Espacio a ingresar el dato: %d\n", i);
+	printf("\033[0;36m  Índice: \033[0;32m%d\n", i);
 
 	// Modifica el carater en el archivo de salida
 	sem_wait(sem_archivo_salida);
