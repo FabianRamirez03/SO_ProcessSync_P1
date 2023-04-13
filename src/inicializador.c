@@ -62,6 +62,7 @@ int main(int argc, char* argv[]) {
 
     // 0666 setea permisos de lectura y escritura para todos
     int mem_compartida_descriptor = shm_open(nombre_buffer, O_CREAT | O_EXCL | O_RDWR, 0666);
+    
     if (mem_compartida_descriptor < 0) {
         shm_unlink(nombre_buffer); 
         perror("No se pudo crear la memoria compartida del buffer\n");
@@ -109,6 +110,7 @@ int main(int argc, char* argv[]) {
     // Accede al contenido del objeto de memoria compartida como si fuera parte de su propio espacio de direcciones. 
     // La función devuelve un puntero al área de memoria mapeada.
     int* puntero_mem_compartida = mmap(NULL, tamano_total, PROT_READ | PROT_WRITE, MAP_SHARED, mem_compartida_descriptor, 0);
+    printf("descriptor inicializador %d\nSize %d\n", mem_compartida_descriptor, tamano_total);
 
 
 	//-----------------------------------------------Inicializa la memoria compartida--------------------------------------------------------------

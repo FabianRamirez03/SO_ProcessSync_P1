@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "informacionCompartida.h"
+#include <curses.h>
 
 
 // semaforos por inicializar
@@ -18,6 +19,15 @@ sem_t *sem_info_compartida;
 // funcion de inicializar
 int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores, char* nombre_sem_info_compartida);
 int obtenerValoresCompartidos(char* nombreMemComp);
+void ejecutar(int modo);
+
+// variables para lectura
+int indiceLectura;
+char letraLeyendo;
+
+// informacion que puede acceder el emisor
+struct informacionCompartida* informacion_compartida_emisor;
+
 
 int main(int argc, char* argv[]){
     // Inicializa las variables
@@ -43,7 +53,6 @@ int main(int argc, char* argv[]){
             strcpy(nombre_sem_receptores, nombre_buffer);
             strcat(nombre_sem_receptores, "_receptor");
             
-
             strcpy(nombre_sem_info_compartida, nombre_buffer);
             strcat(nombre_sem_info_compartida, "_info");
         }
@@ -66,8 +75,16 @@ int main(int argc, char* argv[]){
     }
     
     inicializarSemaforos(nombre_sem_emisores, nombre_sem_receptores, nombre_sem_info_compartida);
-    printf("Nombre buffer %s \n:", nombre_buffer);
+    
+    // se toma el control del semaforo para aumentar el contador de creacion de emisores
+    sem_wait(sem_info_compartida);
     obtenerValoresCompartidos(nombre_buffer);
+    informacion_compartida_emisor->emisores_creados = informacion_compartida_emisor->emisores_creados + 1;
+    informacion_compartida_emisor->emisores_vivos = informacion_compartida_emisor->emisores_vivos + 1;
+    sem_post(sem_info_compartida);
+
+    printf("Actualizo datos del emisor\n");
+    ejecutar(modo);
 
 }
 
@@ -111,9 +128,9 @@ int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores,
 }
 
 int obtenerValoresCompartidos(char* nombreMemComp){
+
     struct stat sb; // estructura de información de archivo
     int memoria_compartida_descriptor; // descriptor de archivo
-    void *ptr; // puntero a la dirección de memoria compartida
 
     // abrir o crear la memoria compartida
     memoria_compartida_descriptor = shm_open(nombreMemComp, O_RDWR, S_IRWXU);
@@ -133,14 +150,52 @@ int obtenerValoresCompartidos(char* nombreMemComp){
     // obtener el tamaño de la memoria compartida
     int size = sb.st_size;
 
+
     // imprimir el tamaño de la memoria compartida
     printf("El tamaño de la memoria compartida es: %d\n", size);
 
+    printf("descriptor emisor %d\nSize %d\n", memoria_compartida_descriptor,size);
     int* puntero_mem_compartida = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memoria_compartida_descriptor, 0);
 
-    struct informacionCompartida* informacion_compartida_emisor = (struct informacionCompartida*) puntero_mem_compartida;
-
-    printf("Tamano archivo desde el emisor: %d \n",informacion_compartida_emisor->tamano_archivo);
-
+    printf("Hizo el mapeo****************");
+    
     return 0;
 }
+
+void ejecutar(int modo){
+    // Modo automatico
+    if (modo == 1)
+    {
+        
+        printf("Se inicia el Modo Automatico\n");
+        //char* ptr = informacion_compartida_emisor + informacion_compartida_emisor->tamano_info_compartida;
+        //char* ptr =  (char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_info_compartida;
+        //printf("valor obtenido %s\n", ptr);
+        
+
+    }
+    
+    // Modo manual
+    else{
+    printf("Modo Manual\n");
+
+    initscr(); // Inicializa la pantalla de curses
+    cbreak(); // Deshabilita el buffer de entrada de línea
+    noecho(); // Deshabilita la devolución automática de teclas
+
+    int c = getch(); // Espera la entrada del usuario
+
+    endwin(); // Restaura la configuración original de la terminal
+
+    printf("La tecla presionada fue %c\n", c);
+    }
+}
+
+void lecturaTexto(char* nombre_buffer){
+    sem_wait(sem_info_compartida);
+    obtenerValoresCompartidos(nombre_buffer);
+    indiceLectura = informacion_compartida_emisor->contador_emisores;
+    //letraLeyendo = informacion_compartida_emisor.
+    sem_post(sem_info_compartida);
+}
+
