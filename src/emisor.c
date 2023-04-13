@@ -10,6 +10,7 @@
 #include "informacionCompartida.h"
 #include <sys/select.h>
 #include "tools.h"
+#include <time.h>
 
 // semaforos por inicializar
 sem_t *sem_emisores;
@@ -264,6 +265,7 @@ void ejecutar(void)
 		sem_getvalue(sem_emisores, &emisores);
 		sem_getvalue(sem_receptores, &recep);
 
+        color("Negro");
 		printf("Valor del semaforo emisores antes: %d\n", emisores);
 		printf("Valor del semaforo receptores antes: %d\n", recep);
 
@@ -284,6 +286,17 @@ void ejecutar(void)
 		printf("Valor del semaforo emisores despues: %d\n", emisores);
 		printf("Valor del semaforo receptores despues: %d\n", recep);
 
-        printf("*************\nLLave 0x%x \n,Letra original: %c en hexa: 0x%x\nLetra encriptada: %c\nContador: %d\nEspacio escritura: %d\nBuffer: %s\n*************", llave, letra, letra, letraEncriptada, contador, espacioEscritura, buffer);
+        time_t t = time(NULL);
+        struct tm *tm_info = localtime(&t);
+        color("Azul");
+        printf("****************************************************************************************\n");
+
+        color("Morado");
+        printf("  %s ",asctime(tm_info));
+
+        printf("\033[0;36m Llave: \033[0;32m 0x%x \n\033[0;36m  Letra original: \033[0;32m %c (0x%x)\n \033[0;36m Letra encriptada: \033[0;32m %c (0x%x) \n \033[0;36m Índice: \033[0;32m%d\n \033[0;36m Espacio escritura: \033[0;32m%d\n \033[0;36m Buffer: \033[0;32m%s\n", llave, letra, letra, letraEncriptada, letraEncriptada,  contador, espacioEscritura, buffer);
+        color("Azul");
+        printf("****************************************************************************************\n");
+        color("Negro");
     }
 }
