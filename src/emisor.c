@@ -27,6 +27,7 @@ char letraLeyendo;
 
 // informacion que puede acceder el emisor
 struct informacionCompartida* informacion_compartida_emisor;
+int* puntero_mem_compartida;
 
 
 int main(int argc, char* argv[]){
@@ -79,8 +80,10 @@ int main(int argc, char* argv[]){
     // se toma el control del semaforo para aumentar el contador de creacion de emisores
     sem_wait(sem_info_compartida);
     obtenerValoresCompartidos(nombre_buffer);
-    informacion_compartida_emisor->emisores_creados = informacion_compartida_emisor->emisores_creados + 1;
-    informacion_compartida_emisor->emisores_vivos = informacion_compartida_emisor->emisores_vivos + 1;
+    informacion_compartida_emisor->emisores_creados ++;
+    informacion_compartida_emisor->emisores_vivos ++;
+    //informacion_compartida_emisor->emisores_creados = informacion_compartida_emisor->emisores_creados + 1;
+    //informacion_compartida_emisor->emisores_vivos = informacion_compartida_emisor->emisores_vivos + 1;
     sem_post(sem_info_compartida);
 
     printf("Actualizo datos del emisor\n");
@@ -155,9 +158,8 @@ int obtenerValoresCompartidos(char* nombreMemComp){
     printf("El tamaño de la memoria compartida es: %d\n", size);
 
     printf("descriptor emisor %d\nSize %d\n", memoria_compartida_descriptor,size);
-    int* puntero_mem_compartida = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memoria_compartida_descriptor, 0);
-
-    printf("Hizo el mapeo****************");
+    puntero_mem_compartida = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memoria_compartida_descriptor, 0);
+    informacion_compartida_emisor = (struct informacionCompartida*) puntero_mem_compartida;
     
     return 0;
 }
