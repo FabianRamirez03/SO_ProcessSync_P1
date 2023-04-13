@@ -15,6 +15,8 @@ void inicializarInformacionCompartida (struct informacionCompartida* informacion
 
 int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores, char* nombre_sem_archivo_salida, char* nombre_sem_info_compartida, int tamano_buffer);
 
+int inicializarTextoSalida(int tamano_archivo);
+
 int main(int argc, char* argv[]) {
 
     // Inicializa las variables
@@ -165,6 +167,8 @@ int main(int argc, char* argv[]) {
     }
 	printf("\n");
 
+	inicializarTextoSalida(tamano_entrada);
+
     // Se inicializan los semaforos y se comprueba que se haga correctamente
     if (inicializarSemaforos(nombre_sem_emisores, nombre_sem_receptores, nombre_sem_archivo_salida, nombre_sem_info_compartida, celdas_buffer) > 0) {
         printf("No se pudieron inicializar los semaforos\n");
@@ -250,6 +254,26 @@ int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores,
         perror("Fallo al inicializar semaforo de la informacion compartida\n");
         return 1;
     }
+
+    return 0;
+}
+
+int inicializarTextoSalida(int tamano_archivo) {
+	FILE *file;
+	int i;
+
+	file = fopen("texto_salida.txt", "w");
+    if (file == NULL) {
+        printf("Error al abrir el archivo. Por favor, verifique los permisos.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (i = 0; i < tamano_archivo; i++) {
+        fputc(' ', file);
+    }
+
+    fclose(file);
+
 
     return 0;
 }

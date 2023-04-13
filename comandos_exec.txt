@@ -1,0 +1,5 @@
+./out/inicializador -n "prueba" -b 10 -k 25
+
+./out/emisor -n "prueba" -k 25 -m
+
+./out/receptor -n "prueba" -k 25 -m
