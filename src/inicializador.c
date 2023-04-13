@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "informacionCompartida.h"
+#include "tools.h"
 
 
 void inicializarInformacionCompartida (struct informacionCompartida* informacion_compartida);
@@ -168,6 +169,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    color("Green");
     printf("Buffer y semaforos creados exitosamente\n");
 
     return 0;
