@@ -28,6 +28,7 @@ char letraLeyendo;
 // informacion que puede acceder el emisor
 struct informacionCompartida* informacion_compartida_emisor;
 int* puntero_mem_compartida;
+int cantidadCeldas;
 
 
 int main(int argc, char* argv[]){
@@ -160,19 +161,26 @@ int obtenerValoresCompartidos(char* nombreMemComp){
     printf("descriptor emisor %d\nSize %d\n", memoria_compartida_descriptor,size);
     puntero_mem_compartida = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memoria_compartida_descriptor, 0);
     informacion_compartida_emisor = (struct informacionCompartida*) puntero_mem_compartida;
-    
+    cantidadCeldas = informacion_compartida_emisor->celdas_buffer;
     return 0;
 }
 
 void ejecutar(int modo){
+    int contador = 0;
+    int espacioEscritura = 0;
     // Modo automatico
     if (modo == 1)
     {
-        
         printf("Se inicia el Modo Automatico\n");
-        //char* ptr = informacion_compartida_emisor + informacion_compartida_emisor->tamano_info_compartida;
-        //char* ptr =  (char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_info_compartida;
-        //printf("valor obtenido %s\n", ptr);
+        sem_wait(sem_info_compartida);
+        char* texto =  (char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_info_compartida;
+        contador = informacion_compartida_emisor->contador_emisores;
+        espacioEscritura = informacion_compartida_emisor->contador_emisores % informacion_compartida_emisor->celdas_buffer;
+        informacion_compartida_emisor->contador_emisores ++;
+        sem_post(sem_info_compartida);
+
+        printf("Contador: %d\nespacio escritura: %d\n",contador,espacioEscritura);
+        
         
 
     }
