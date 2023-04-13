@@ -13,5 +13,4 @@ struct informacionCompartida {
 	int tamano_archivo;
 	int tamano_info_compartida;
     int llave;
-
 };

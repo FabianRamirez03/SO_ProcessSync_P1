@@ -25,8 +25,6 @@ int main(int argc, char* argv[]) {
     // Inicializa los parametros a valores incorrectos que deberan ser cambiados
     strcpy(nombre_buffer, "");
 
-    int texto_entrada_descriptor;
-    char texto_entrada_buffer[8192];
 
     int celdas_buffer = -1;
     int llave = -1;
@@ -38,16 +36,16 @@ int main(int argc, char* argv[]) {
             strcpy(nombre_buffer, argv[i + 1]);
 
             strcpy(nombre_sem_emisores, nombre_buffer);
-            strcat(nombre_sem_emisores, "emisor");
+            strcat(nombre_sem_emisores, "_emisor");
 
             strcpy(nombre_sem_receptores, nombre_buffer);
-            strcat(nombre_sem_receptores, "receptor");
+            strcat(nombre_sem_receptores, "_receptor");
             
             strcpy(nombre_sem_archivo_salida, nombre_buffer);
-            strcat(nombre_sem_archivo_salida, "salida");
+            strcat(nombre_sem_archivo_salida, "_salida");
 
             strcpy(nombre_sem_info_compartida, nombre_buffer);
-            strcat(nombre_sem_info_compartida, "info");
+            strcat(nombre_sem_info_compartida, "_info");
         }
         if (strcmp(argv[i], "-b") == 0) { 
             celdas_buffer = atoi(argv[i + 1]);
@@ -211,8 +209,6 @@ int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores,
         perror("Fallo al inicializar semaforo de receptores\n");
         return 1;
     }
-
-
 
     sem_t* sem_archivo_salida = sem_open(nombre_sem_archivo_salida, O_CREAT, 0644, 1);
 
