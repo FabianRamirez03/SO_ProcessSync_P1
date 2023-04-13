@@ -188,6 +188,7 @@ int modoEjecucion(int modo)
             ejecutar();
             ejecucion = informacion_compartida_receptor->terminacionProcesos;
         }
+		return 0;
     }
 
     else
@@ -246,6 +247,7 @@ int modoEjecucion(int modo)
                 }
             }
         }
+		return 0;
     }
 }
 
