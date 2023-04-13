@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "informacionCompartida.h"
+#include "tools.h"
 
 
 void inicializarInformacionCompartida (struct informacionCompartida* informacion_compartida);
@@ -67,6 +68,7 @@ int main(int argc, char* argv[]) {
     
     if (mem_compartida_descriptor < 0) {
         shm_unlink(nombre_buffer); 
+        color("Rojo");
         perror("No se pudo crear la memoria compartida del buffer\n");
         return 1;
     }
@@ -75,6 +77,7 @@ int main(int argc, char* argv[]) {
 	//-------------------------------------------------------------- Abre el archivo --------------------------------------------------------------
 	FILE* archivo_entrada_ptr = fopen("texto_entrada.txt", "r");  // Abre el archivo en modo lectura
     if (archivo_entrada_ptr == NULL) {  // Verifica si el archivo se abrió correctamente
+        color("Rojo");
         printf("No se pudo abrir el archivo\n");
         return 1;
     }
@@ -87,6 +90,7 @@ int main(int argc, char* argv[]) {
     long int tamano_entrada = ftell(archivo_entrada_ptr);
 	fseek(archivo_entrada_ptr, 0, SEEK_SET); // Desplazar el puntero al inicio del archivo
 
+    color("Amarillo");
     printf("El tamaño del archivo es %ld bytes\n", tamano_entrada);
 
     int tamano_info_compartida = sizeof(struct informacionCompartida);
@@ -157,6 +161,7 @@ int main(int argc, char* argv[]) {
 
 
 		// Recorrer e imprimir el contenido del array
+    printf("Texto ingresado: ");
     for (int i = 0; i < tamano_entrada; i++) {
         printf("%c", dest_archivo_entrada_ptr[i]);
     }
@@ -171,8 +176,24 @@ int main(int argc, char* argv[]) {
         shm_unlink(nombre_buffer); 
         return 1;
     }
-
+    color("Negro");
     printf("Buffer y semaforos creados exitosamente\n");
+    color("Verde");
+    printf("*****************************Inicializador********************************\n");
+    printf("*");
+    color("Cyan");
+    printf("  %-20s |  %-30s |  %-10s", "Identificador", "Cantidad de Espacios", "Llave");
+    color("Verde");
+    printf("  *\n");
+    printf("*");
+    color("Blanco");
+    printf("  %-20s |  %-30d |  %-10d", nombre_buffer, celdas_buffer, llave);
+    color("Verde");
+    printf("  *\n");
+    printf("**************************************************************************\n");
+    color("Blanco");
+
+
 
     return 0;
 }

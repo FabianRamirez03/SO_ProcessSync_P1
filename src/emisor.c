@@ -8,8 +8,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "informacionCompartida.h"
-#include <curses.h> //talvez quitar
 #include <sys/select.h>
+#include "tools.h"
 
 // semaforos por inicializar
 sem_t *sem_emisores;
