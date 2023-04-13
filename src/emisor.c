@@ -29,6 +29,7 @@ char letraLeyendo;
 struct informacionCompartida* informacion_compartida_emisor;
 int* puntero_mem_compartida;
 int cantidadCeldas;
+int llave = -1;
 
 
 int main(int argc, char* argv[]){
@@ -41,7 +42,6 @@ int main(int argc, char* argv[]){
     strcpy(nombre_buffer, "");
 
     int modo = 1;
-    int llave = -1;
 
     // Obtiene el valor de los argumentos pasados en la inicializacion del programa
     for (int i = 0; i < argc; i++) {
@@ -168,18 +168,33 @@ int obtenerValoresCompartidos(char* nombreMemComp){
 void ejecutar(int modo){
     int contador = 0;
     int espacioEscritura = 0;
+    char letra;
+    char letraEncriptada;
     // Modo automatico
     if (modo == 1)
     {
         printf("Se inicia el Modo Automatico\n");
         sem_wait(sem_info_compartida);
-        char* texto =  (char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_info_compartida;
+        letra =  ((char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_info_compartida)[informacion_compartida_emisor->contador_emisores];
         contador = informacion_compartida_emisor->contador_emisores;
-        espacioEscritura = informacion_compartida_emisor->contador_emisores % informacion_compartida_emisor->celdas_buffer;
+        espacioEscritura = informacion_compartida_emisor->contador_emisores % cantidadCeldas;
         informacion_compartida_emisor->contador_emisores ++;
         sem_post(sem_info_compartida);
 
-        printf("Contador: %d\nespacio escritura: %d\n",contador,espacioEscritura);
+        // down al semaforo de receptores
+        sem_post(sem_receptores);
+        // up al semaforo de emisores
+        sem_wait(sem_emisores);
+        char* buffer = (char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_archivo + informacion_compartida_emisor->tamano_info_compartida;
+
+        // se encripta la letra
+        letraEncriptada = letra ^ llave;
+
+        *(buffer + espacioEscritura) = letraEncriptada;
+
+        
+
+        //printf("LLave 0x%x,Letra original: %c en haxa: 0x%x\nLetra encriptada: %c\nContador: %d\nEspacio escritura: %d\nBuffer: %s\n",llave,letra,letra,letraEncriptada, contador,espacioEscritura, buffer);
         
         
 
