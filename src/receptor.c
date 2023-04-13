@@ -180,7 +180,7 @@ int modoEjecucion(int modo)
     int ejecucion = informacion_compartida_receptor->terminacionProcesos;
     if (modo == 1)
     {
-        printf("Entra modo Automatico\n");
+        printf("Modo Automatico\n*****************************\n");
 
         while (ejecucion == 0)
         {
@@ -193,20 +193,7 @@ int modoEjecucion(int modo)
 
     else
     {
-        printf("Modo Manual\n");
-        /*
-        initscr(); // Inicializa la pantalla de curses
-        cbreak(); // Deshabilita el buffer de entrada de línea
-        noecho(); // Deshabilita la devolución automática de teclas
-
-        int c = getch(); // Espera la entrada del usuario
-
-        endwin(); // Restaura la configuración original de la terminal
-
-        printf("La tecla presionada fue %c\n", c);
-        */
-
-        // Configurar la estructura para monitorear STDIN_FILENO
+        printf("Modo Manual\n*****************************\n");
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(STDIN_FILENO, &fds);
@@ -331,13 +318,10 @@ int actualizarArchivoSalida(int i, char letra){
 
 	fseek(file, i, SEEK_SET);
     fputc(letra, file);
-
 	fclose(file);
 
 	// Libera el semaforo
 	sem_post(sem_archivo_salida);
-
-
 
 	return 0;
 }
