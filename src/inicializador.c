@@ -190,6 +190,8 @@ void inicializarInformacionCompartida(struct informacionCompartida* informacion_
 	informacion_compartida->tamano_info_compartida = 0;
 	informacion_compartida->llave = 0;
 
+    informacion_compartida->terminacionProcesos = 0;
+
     return;
 }
 

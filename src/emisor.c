@@ -19,11 +19,13 @@ sem_t *sem_info_compartida;
 // funcion de inicializar
 int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores, char* nombre_sem_info_compartida);
 int obtenerValoresCompartidos(char* nombreMemComp);
-void ejecutar(int modo);
+void ejecutar(void);
+void modoEjecucion(int modo);
 
 // variables para lectura
 int indiceLectura;
 char letraLeyendo;
+int tamanioArchivo;
 
 // informacion que puede acceder el emisor
 struct informacionCompartida* informacion_compartida_emisor;
@@ -83,13 +85,9 @@ int main(int argc, char* argv[]){
     obtenerValoresCompartidos(nombre_buffer);
     informacion_compartida_emisor->emisores_creados ++;
     informacion_compartida_emisor->emisores_vivos ++;
-    //informacion_compartida_emisor->emisores_creados = informacion_compartida_emisor->emisores_creados + 1;
-    //informacion_compartida_emisor->emisores_vivos = informacion_compartida_emisor->emisores_vivos + 1;
+    tamanioArchivo = informacion_compartida_emisor->tamano_archivo;
     sem_post(sem_info_compartida);
-
-    printf("Actualizo datos del emisor\n");
-    ejecutar(modo);
-
+    modoEjecucion(modo);
 }
 
 // Inicializacion de los emisores
@@ -155,72 +153,69 @@ int obtenerValoresCompartidos(char* nombreMemComp){
     int size = sb.st_size;
 
 
-    // imprimir el tamaño de la memoria compartida
-    printf("El tamaño de la memoria compartida es: %d\n", size);
-
-    printf("descriptor emisor %d\nSize %d\n", memoria_compartida_descriptor,size);
     puntero_mem_compartida = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memoria_compartida_descriptor, 0);
     informacion_compartida_emisor = (struct informacionCompartida*) puntero_mem_compartida;
     cantidadCeldas = informacion_compartida_emisor->celdas_buffer;
     return 0;
 }
 
-void ejecutar(int modo){
+void modoEjecucion(int modo){
+    int ejecucion = informacion_compartida_emisor->terminacionProcesos;
+    if(modo == 1){
+        printf("Entra modo manual\n");
+
+        while (ejecucion == 0)
+        {   
+            sleep(1);
+            ejecutar();
+            ejecucion = informacion_compartida_emisor->terminacionProcesos;
+        }
+    }
+    
+    else{
+        printf("Modo Manual\n");
+
+        initscr(); // Inicializa la pantalla de curses
+        cbreak(); // Deshabilita el buffer de entrada de línea
+        noecho(); // Deshabilita la devolución automática de teclas
+
+        int c = getch(); // Espera la entrada del usuario
+
+        endwin(); // Restaura la configuración original de la terminal
+
+        printf("La tecla presionada fue %c\n", c);
+    }
+}
+
+void ejecutar(void){
     int contador = 0;
     int espacioEscritura = 0;
     char letra;
     char letraEncriptada;
-    // Modo automatico
-    if (modo == 1)
-    {
-        printf("Se inicia el Modo Automatico\n");
-        sem_wait(sem_info_compartida);
-        letra =  ((char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_info_compartida)[informacion_compartida_emisor->contador_emisores];
-        contador = informacion_compartida_emisor->contador_emisores;
-        espacioEscritura = informacion_compartida_emisor->contador_emisores % cantidadCeldas;
-        informacion_compartida_emisor->contador_emisores ++;
-        sem_post(sem_info_compartida);
 
-        // down al semaforo de receptores
-        sem_post(sem_receptores);
-        // up al semaforo de emisores
-        sem_wait(sem_emisores);
-        char* buffer = (char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_archivo + informacion_compartida_emisor->tamano_info_compartida;
-
-        // se encripta la letra
-        letraEncriptada = letra ^ llave;
-
-        *(buffer + espacioEscritura) = letraEncriptada;
-
-        
-
-        //printf("LLave 0x%x,Letra original: %c en haxa: 0x%x\nLetra encriptada: %c\nContador: %d\nEspacio escritura: %d\nBuffer: %s\n",llave,letra,letra,letraEncriptada, contador,espacioEscritura, buffer);
-        
-        
-
-    }
-    
-    // Modo manual
-    else{
-    printf("Modo Manual\n");
-
-    initscr(); // Inicializa la pantalla de curses
-    cbreak(); // Deshabilita el buffer de entrada de línea
-    noecho(); // Deshabilita la devolución automática de teclas
-
-    int c = getch(); // Espera la entrada del usuario
-
-    endwin(); // Restaura la configuración original de la terminal
-
-    printf("La tecla presionada fue %c\n", c);
-    }
-}
-
-void lecturaTexto(char* nombre_buffer){
+    // logica de lectura y escritura con semaforos
     sem_wait(sem_info_compartida);
-    obtenerValoresCompartidos(nombre_buffer);
-    indiceLectura = informacion_compartida_emisor->contador_emisores;
-    //letraLeyendo = informacion_compartida_emisor.
+    letra =  ((char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_info_compartida)[informacion_compartida_emisor->contador_emisores];
+    contador = informacion_compartida_emisor->contador_emisores;
+    espacioEscritura = informacion_compartida_emisor->contador_emisores % cantidadCeldas;
+    informacion_compartida_emisor->contador_emisores ++;
     sem_post(sem_info_compartida);
-}
 
+    if (contador < tamanioArchivo){
+    // down al semaforo de receptores
+    sem_post(sem_receptores);
+    // up al semaforo de emisores
+    sem_wait(sem_emisores);
+    char* buffer = (char*) puntero_mem_compartida + informacion_compartida_emisor->tamano_archivo + informacion_compartida_emisor->tamano_info_compartida;
+
+    // se encripta la letra
+    letraEncriptada = letra ^ llave;
+
+    *(buffer + espacioEscritura) = letraEncriptada;
+
+    printf("*************\nLLave 0x%x \n,Letra original: %c en haxa: 0x%x\nLetra encriptada: %c\nContador: %d\nEspacio escritura: %d\nBuffer: %s\n*************"
+    ,llave,letra,letra,letraEncriptada, contador,espacioEscritura, buffer); 
+    }
+
+
+}
