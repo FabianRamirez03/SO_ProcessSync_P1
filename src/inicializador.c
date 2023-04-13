@@ -8,11 +8,14 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "informacionCompartida.h"
+#include "tools.h"
 
 
 void inicializarInformacionCompartida (struct informacionCompartida* informacion_compartida);
 
 int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores, char* nombre_sem_archivo_salida, char* nombre_sem_info_compartida, int tamano_buffer);
+
+int inicializarTextoSalida(int tamano_archivo);
 
 int main(int argc, char* argv[]) {
 
@@ -25,8 +28,6 @@ int main(int argc, char* argv[]) {
     // Inicializa los parametros a valores incorrectos que deberan ser cambiados
     strcpy(nombre_buffer, "");
 
-    int texto_entrada_descriptor;
-    char texto_entrada_buffer[8192];
 
     int celdas_buffer = -1;
     int llave = -1;
@@ -38,16 +39,16 @@ int main(int argc, char* argv[]) {
             strcpy(nombre_buffer, argv[i + 1]);
 
             strcpy(nombre_sem_emisores, nombre_buffer);
-            strcat(nombre_sem_emisores, "emisor");
+            strcat(nombre_sem_emisores, "_emisor");
 
             strcpy(nombre_sem_receptores, nombre_buffer);
-            strcat(nombre_sem_receptores, "receptor");
+            strcat(nombre_sem_receptores, "_receptor");
             
             strcpy(nombre_sem_archivo_salida, nombre_buffer);
-            strcat(nombre_sem_archivo_salida, "salida");
+            strcat(nombre_sem_archivo_salida, "_salida");
 
             strcpy(nombre_sem_info_compartida, nombre_buffer);
-            strcat(nombre_sem_info_compartida, "info");
+            strcat(nombre_sem_info_compartida, "_info");
         }
         if (strcmp(argv[i], "-b") == 0) { 
             celdas_buffer = atoi(argv[i + 1]);
@@ -64,8 +65,10 @@ int main(int argc, char* argv[]) {
 
     // 0666 setea permisos de lectura y escritura para todos
     int mem_compartida_descriptor = shm_open(nombre_buffer, O_CREAT | O_EXCL | O_RDWR, 0666);
+    
     if (mem_compartida_descriptor < 0) {
         shm_unlink(nombre_buffer); 
+        color("Rojo");
         perror("No se pudo crear la memoria compartida del buffer\n");
         return 1;
     }
@@ -74,6 +77,7 @@ int main(int argc, char* argv[]) {
 	//-------------------------------------------------------------- Abre el archivo --------------------------------------------------------------
 	FILE* archivo_entrada_ptr = fopen("texto_entrada.txt", "r");  // Abre el archivo en modo lectura
     if (archivo_entrada_ptr == NULL) {  // Verifica si el archivo se abrió correctamente
+        color("Rojo");
         printf("No se pudo abrir el archivo\n");
         return 1;
     }
@@ -86,6 +90,7 @@ int main(int argc, char* argv[]) {
     long int tamano_entrada = ftell(archivo_entrada_ptr);
 	fseek(archivo_entrada_ptr, 0, SEEK_SET); // Desplazar el puntero al inicio del archivo
 
+    color("Amarillo");
     printf("El tamaño del archivo es %ld bytes\n", tamano_entrada);
 
     int tamano_info_compartida = sizeof(struct informacionCompartida);
@@ -111,6 +116,7 @@ int main(int argc, char* argv[]) {
     // Accede al contenido del objeto de memoria compartida como si fuera parte de su propio espacio de direcciones. 
     // La función devuelve un puntero al área de memoria mapeada.
     int* puntero_mem_compartida = mmap(NULL, tamano_total, PROT_READ | PROT_WRITE, MAP_SHARED, mem_compartida_descriptor, 0);
+    printf("descriptor inicializador %d\nSize %d\n", mem_compartida_descriptor, tamano_total);
 
 
 	//-----------------------------------------------Inicializa la memoria compartida--------------------------------------------------------------
@@ -155,10 +161,13 @@ int main(int argc, char* argv[]) {
 
 
 		// Recorrer e imprimir el contenido del array
+    printf("Texto ingresado: ");
     for (int i = 0; i < tamano_entrada; i++) {
         printf("%c", dest_archivo_entrada_ptr[i]);
     }
 	printf("\n");
+
+	inicializarTextoSalida(tamano_entrada);
 
     // Se inicializan los semaforos y se comprueba que se haga correctamente
     if (inicializarSemaforos(nombre_sem_emisores, nombre_sem_receptores, nombre_sem_archivo_salida, nombre_sem_info_compartida, celdas_buffer) > 0) {
@@ -167,8 +176,24 @@ int main(int argc, char* argv[]) {
         shm_unlink(nombre_buffer); 
         return 1;
     }
-
+    color("Negro");
     printf("Buffer y semaforos creados exitosamente\n");
+    color("Verde");
+    printf("*****************************Inicializador********************************\n");
+    printf("*");
+    color("Cyan");
+    printf("  %-20s |  %-30s |  %-10s", "Identificador", "Cantidad de Espacios", "Llave");
+    color("Verde");
+    printf("  *\n");
+    printf("*");
+    color("Blanco");
+    printf("  %-20s |  %-30d |  %-10d", nombre_buffer, celdas_buffer, llave);
+    color("Verde");
+    printf("  *\n");
+    printf("**************************************************************************\n");
+    color("Blanco");
+
+
 
     return 0;
 }
@@ -189,6 +214,8 @@ void inicializarInformacionCompartida(struct informacionCompartida* informacion_
 	informacion_compartida->tamano_archivo = 0;
 	informacion_compartida->tamano_info_compartida = 0;
 	informacion_compartida->llave = 0;
+
+    informacion_compartida->terminacionProcesos = 0;
 
     return;
 }
@@ -212,8 +239,6 @@ int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores,
         return 1;
     }
 
-
-
     sem_t* sem_archivo_salida = sem_open(nombre_sem_archivo_salida, O_CREAT, 0644, 1);
 
     if (sem_archivo_salida == SEM_FAILED)
@@ -229,6 +254,26 @@ int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores,
         perror("Fallo al inicializar semaforo de la informacion compartida\n");
         return 1;
     }
+
+    return 0;
+}
+
+int inicializarTextoSalida(int tamano_archivo) {
+	FILE *file;
+	int i;
+
+	file = fopen("texto_salida.txt", "w");
+    if (file == NULL) {
+        printf("Error al abrir el archivo. Por favor, verifique los permisos.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    for (i = 0; i < tamano_archivo; i++) {
+        fputc(' ', file);
+    }
+
+    fclose(file);
+
 
     return 0;
 }
