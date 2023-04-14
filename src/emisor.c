@@ -187,7 +187,6 @@ int modoEjecucion(int modo)
             sleep(3);
             ejecutar();
             ejecucion = informacion_compartida_emisor->terminacionProcesos;
-            p
         }
         finalizar();
     }
