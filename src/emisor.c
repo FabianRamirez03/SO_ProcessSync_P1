@@ -11,6 +11,7 @@
 #include <sys/select.h>
 #include "tools.h"
 #include <time.h>
+#include <signal.h>
 
 // semaforos por inicializar
 sem_t *sem_emisores;
@@ -22,6 +23,9 @@ int inicializarSemaforos(char *nombre_sem_emisores, char *nombre_sem_receptores,
 int obtenerValoresCompartidos(char *nombreMemComp);
 void ejecutar(void);
 int modoEjecucion(int modo);
+void finalizarSignal(int sig);
+void finalizar(void);
+
 
 // variables para lectura
 int indiceLectura;
@@ -34,8 +38,14 @@ int *puntero_mem_compartida;
 int cantidadCeldas;
 int llave = -1;
 
+int descriptor_global;
+char buffer_name_global[50];
+int tamano_global;
+
+
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, finalizarSignal);
     // Inicializa las variables
     char nombre_buffer[50];
     char nombre_sem_emisores[50];
@@ -53,6 +63,7 @@ int main(int argc, char *argv[])
         if (strcmp(argv[i], "-n") == 0)
         {
             strcpy(nombre_buffer, argv[i + 1]);
+            strcpy(buffer_name_global, argv[i + 1]);
 
             strcpy(nombre_sem_emisores, nombre_buffer);
             strcat(nombre_sem_emisores, "_emisor");
@@ -146,6 +157,7 @@ int obtenerValoresCompartidos(char *nombreMemComp)
 
     // abrir o crear la memoria compartida
     memoria_compartida_descriptor = shm_open(nombreMemComp, O_RDWR, S_IRWXU);
+    descriptor_global = memoria_compartida_descriptor;
 
     // verificar si la llamada fue exitosa
     if (memoria_compartida_descriptor < 0)
@@ -163,6 +175,7 @@ int obtenerValoresCompartidos(char *nombreMemComp)
 
     // obtener el tamaño de la memoria compartida
     int size = sb.st_size;
+    tamano_global = size;
 
     puntero_mem_compartida = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memoria_compartida_descriptor, 0);
     informacion_compartida_emisor = (struct informacionCompartida *)puntero_mem_compartida;
@@ -183,6 +196,7 @@ int modoEjecucion(int modo)
             ejecutar();
             ejecucion = informacion_compartida_emisor->terminacionProcesos;
         }
+        finalizar();
     }
 
     else
@@ -194,6 +208,8 @@ int modoEjecucion(int modo)
 
         while (ejecucion == 0)
         {
+            ejecucion = informacion_compartida_emisor->terminacionProcesos;
+            printf("Ejecucion: %d\n", ejecucion);
             // Monitorear la entrada estándar y la salida estándar
             int ready = select(STDIN_FILENO + 1, &fds, NULL, NULL, NULL);
             if (ready == -1)
@@ -228,6 +244,7 @@ int modoEjecucion(int modo)
                 }
             }
         }
+        finalizar();
     }
 }
 
@@ -286,4 +303,41 @@ void ejecutar(void)
         printf("****************************************************************************************\n");
         color("Negro");
     }
+}
+
+
+void finalizarSignal(int sig) {
+    finalizar();
+}
+
+void finalizar(void) {
+    printf("Finalizando emisor.\n");
+
+    sem_wait(sem_info_compartida);
+    informacion_compartida_emisor->emisores_vivos --;
+    sem_post(sem_info_compartida);
+
+    // Cierro los semaforos
+    sem_close(sem_emisores);
+    sem_close(sem_receptores);
+    sem_close(sem_info_compartida);
+    
+    /*
+    // Unlink semaforos
+    sem_unlink(strcat(buffer_name_global, "_emisor"));
+    sem_unlink(strcat(buffer_name_global, "_receptor"));
+    sem_unlink(strcat(buffer_name_global, "_info"));
+*/
+
+    // Liberar memoria compartida
+    if (munmap(puntero_mem_compartida, tamano_global) == -1) {
+        perror("Error al liberar memoria compartida");
+        exit(0);
+    }
+    close(descriptor_global);
+    
+    shm_unlink(buffer_name_global);
+    
+
+    exit(0);
 }

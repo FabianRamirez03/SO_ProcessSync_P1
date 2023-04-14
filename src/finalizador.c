@@ -12,24 +12,31 @@
 #include "tools.h"
 
 // instancia del semaforo
+sem_t *sem_emisores;
+sem_t *sem_receptores;
 sem_t *sem_info_compartida;
 sem_t *sem_archivo_salida;
 
 // funciones implementadas
-int inicializarSemaforos(char *nombre_sem_archivo_salida, char *nombre_sem_info_compartida);
+int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores, char* nombre_sem_archivo_salida, char* nombre_sem_info_compartida);
 int obtenerValoresCompartidos(char *nombreMemComp);
-void detectarFinalizacion();
+int detectarFinalizacion(char* nombre_buffer);
+void ejecutar(char* nombre_buffer);
+int finalizarRecursosCompartida(char* nombre_buffer);
 
 // informacion para la memoria compartida
 struct informacionCompartida *informacion_compartida_finalizador;
 int *puntero_mem_compartida;
+int ejecucion = 0;
 
 int main(int argc, char *argv[])
 {
     // Inicializa las variables
     char nombre_buffer[50];
+    char nombre_sem_emisores[50];
+    char nombre_sem_receptores[50];
+	char nombre_sem_archivo_salida[50];
     char nombre_sem_info_compartida[50];
-    char nombre_sem_archivo_salida[50];
     // Inicializa los parametros a valores incorrectos que deberan ser cambiados
     strcpy(nombre_buffer, "");
 
@@ -41,6 +48,12 @@ int main(int argc, char *argv[])
         {
             strcpy(nombre_buffer, argv[i + 1]);
 
+            strcpy(nombre_sem_emisores, nombre_buffer);
+            strcat(nombre_sem_emisores, "_emisor");
+
+            strcpy(nombre_sem_receptores, nombre_buffer);
+            strcat(nombre_sem_receptores, "_receptor");
+
             strcpy(nombre_sem_info_compartida, nombre_buffer);
             strcat(nombre_sem_info_compartida, "_info");
 
@@ -50,20 +63,19 @@ int main(int argc, char *argv[])
     }
 
     // Se asegura que los parametros fueron correctamente proporcionados y cambiados, sino falla
-    if (strcmp(nombre_buffer, "") == 0 || llave == -1)
+    if (strcmp(nombre_buffer, "") == 0)
     {
         printf("Error al determinar el nombre o la llave del emisor\n");
         return 1;
     }
 
-    inicializarSemaforos(nombre_sem_archivo_salida, nombre_sem_info_compartida);
+    inicializarSemaforos(nombre_sem_emisores, nombre_sem_receptores, nombre_sem_archivo_salida, nombre_sem_info_compartida);
 
     // Se detectan los inputs del teclado
-    obtenerValoresCompartidos(nombre_buffer);
-    detectarFinalizacion();
+    detectarFinalizacion(nombre_buffer);
 }
 
-int inicializarSemaforos(char *nombre_sem_emisores, char *nombre_sem_receptores, char *nombre_sem_info_compartida)
+int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores, char* nombre_sem_archivo_salida, char* nombre_sem_info_compartida)
 {
     // valida si el semaforo de la informacion compartida existe
     sem_info_compartida = sem_open(nombre_sem_info_compartida, O_EXCL);
@@ -120,14 +132,13 @@ int obtenerValoresCompartidos(char *nombreMemComp)
     return 0;
 }
 
-void ejecutar(void)
+void ejecutar(char* nombre_buffer)
 {
+    obtenerValoresCompartidos(nombre_buffer);
     // variables para desplegar la informacion
     int emisoresVivos, emisoresCreados, receptoresVivos, 
         receptoresCreados, caracteresTransferidos,
-        caracteresEnBuffer, memoriaUtilizada;
-
-
+        caracteresEnBuffer, memoria_utilizada;
 
     // obtiene los procesos que se terminaron de ejecutar
     sem_wait(sem_info_compartida);
@@ -137,48 +148,98 @@ void ejecutar(void)
     receptoresCreados = informacion_compartida_finalizador->receptores_creados;
     caracteresTransferidos = informacion_compartida_finalizador->contador_receptores;
     caracteresEnBuffer = informacion_compartida_finalizador->contador_emisores;
-    memoriaUtilizada = informacion_compartida_finalizador->tamano_info_compartida;
+    memoria_utilizada = informacion_compartida_finalizador->memoriaUtilizada;
+    informacion_compartida_finalizador->terminacionProcesos = 1;
     sem_post(sem_info_compartida);
 
-    printf("Emisores Vivos ---> %d\nEmisores Creados ---> %d\n
-            Receptores Vivos ---> %d\nReceptores Creados ---> %d\n
-            Caracteres Transferidos ---> %d\n Caracteres en el Buffer ---> %d\n
-            Memoria utilizada ---> %d\n",
+    ejecucion = 1;
+
+    finalizarRecursosCompartida(nombre_buffer);
+    
+    
+    printf("Emisores Vivos ---> %d\nEmisores Creados ---> %d\nReceptores Vivos ---> %d\nReceptores Creados ---> %d\nCaracteres Transferidos ---> %d\n Caracteres en el Buffer ---> %d\nMemoria utilizada ---> %d\n",
             emisoresVivos, emisoresCreados, receptoresVivos, receptoresCreados,
-            caracteresTransferidos, caracteresEnBuffer, memoriaUtilizada);
+            caracteresTransferidos, caracteresEnBuffer, memoria_utilizada);
+
+    
+    ejecucion = 1;
+    
+}
+
+int detectarFinalizacion(char* nombre_buffer )
+{
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+    while (ejecucion == 0)
+    {
+        // Monitorear la entrada estándar y la salida estándar
+        int ready = select(STDIN_FILENO + 1, &fds, NULL, NULL, NULL);
+        if (ready == -1)
+        {
+            perror("select");
+            return 1;
+        }
+
+        // Si se detectó un evento en la entrada estándar, leer y procesar la entrada
+        if (FD_ISSET(STDIN_FILENO, &fds))
+        {
+            char input[256];
+            ssize_t bytes_read = read(STDIN_FILENO, input, sizeof(input));
+            if (bytes_read == -1)
+            {
+                perror("Error al leer la entrada");
+                return 1;
+            }
+            // Procesar la entrada recibida
+            if (bytes_read == 1 && input[0] == '\n')
+            {
+                ejecutar(nombre_buffer);
+            }
+            else if (input[0] == 'x')
+            {
+                printf("Se deberia de terminar el proceso\n");
+            }
+            
+            else
+            {
+                printf("Ingreso %s y no es una letra valida", input);
+            }
+        }
+    }
 
 }
 
-void detectarFinalizacion()
-{
-    // Monitorear la entrada estándar y la salida estándar
-    printf("Presiones x y despues enter para finalizar la ejecucion del programa\n");
-    int ready = select(STDIN_FILENO + 1, &fds, NULL, NULL, NULL);
-    if (ready == -1)
-    {
-        perror("select");
-        return 1;
-    }
+int finalizarRecursosCompartida(char* nombre_buffer){
 
-    // Si se detectó un evento en la entrada estándar, leer y procesar la entrada
-    if (FD_ISSET(STDIN_FILENO, &fds))
-    {
-        char input[256];
-        ssize_t bytes_read = read(STDIN_FILENO, input, sizeof(input));
-        if (bytes_read == -1)
-        {
-            perror("Error al leer la entrada");
-            return 1;
-        }
-        // Procesar la entrada recibida
-        if (input[0] == 'x')
-        {
-            ejecutar();
-        }
+    int emisoresCreados, receptoresVivos;
 
-        else
-        {
-            printf("Ingreso %s y no es una letra valida", input);
-        }
+    emisoresCreados = informacion_compartida_finalizador->emisores_creados;
+    receptoresVivos = informacion_compartida_finalizador->receptores_vivos;
+
+    while (emisoresCreados  != 0 || receptoresVivos  != 0)
+    {
+        emisoresCreados = informacion_compartida_finalizador->emisores_creados;
+        receptoresVivos = informacion_compartida_finalizador->receptores_vivos;
     }
+    
+
+    // Eliminar la región de memoria compartida
+
+    if (shm_unlink(nombre_buffer) == -1)
+    {
+        perror("Error al eliminar la región de memoria compartida");
+        exit(1);
+    }
+    printf("Región de memoria compartida eliminada\n");
+    
+
+
+    // Eliminando semaforos
+    sem_destroy(sem_emisores);
+    sem_destroy(sem_receptores);
+    sem_destroy(sem_info_compartida);
+    sem_destroy(sem_archivo_salida);
+    
+    return 0;
 }

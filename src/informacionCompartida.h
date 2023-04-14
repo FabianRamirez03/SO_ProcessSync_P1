@@ -14,5 +14,7 @@ struct informacionCompartida {
 	int tamano_info_compartida;
     int llave;
 
+    int memoriaUtilizada;
+
     int terminacionProcesos;
 };
