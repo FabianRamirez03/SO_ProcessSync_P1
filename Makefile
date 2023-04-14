@@ -1,4 +1,11 @@
-all:
+all: build inicializador
+
+KEY = 25
+ID = "prueba"
+BLOQUES = 10
+
+
+build:
 	gcc -c src/inicializador.c
 	gcc inicializador.o -lpthread -lncurses -lrt -lm -o out/inicializador
 	rm inicializador.o
@@ -17,4 +24,14 @@ all:
 
 	find /dev/shm/ -mindepth 1 -delete
 
-	./out/inicializador -n "prueba" -b 10 -k 25
+inicializador:
+	./out/inicializador -n $(ID) -b $(BLOQUES) -k $(KEY)
+
+emisor: 
+	./out/emisor -n $(ID) -k $(KEY) 
+
+receptor:
+	./out/receptor -n $(ID) -k $(KEY) 
+
+finalizador:
+	./out/finalizador -n $(ID)
