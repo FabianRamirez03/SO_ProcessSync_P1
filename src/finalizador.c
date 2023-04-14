@@ -152,11 +152,16 @@ void ejecutar(char* nombre_buffer)
     informacion_compartida_finalizador->terminacionProcesos = 1;
     sem_post(sem_info_compartida);
 
+    ejecucion = 1;
+
+    finalizarRecursosCompartida(nombre_buffer);
+    
+    
     printf("Emisores Vivos ---> %d\nEmisores Creados ---> %d\nReceptores Vivos ---> %d\nReceptores Creados ---> %d\nCaracteres Transferidos ---> %d\n Caracteres en el Buffer ---> %d\nMemoria utilizada ---> %d\n",
             emisoresVivos, emisoresCreados, receptoresVivos, receptoresCreados,
             caracteresTransferidos, caracteresEnBuffer, memoria_utilizada);
 
-    finalizarRecursosCompartida(nombre_buffer);
+    
     ejecucion = 1;
     
 }
@@ -206,13 +211,29 @@ int detectarFinalizacion(char* nombre_buffer )
 }
 
 int finalizarRecursosCompartida(char* nombre_buffer){
+
+    int emisoresCreados, receptoresVivos;
+
+    emisoresCreados = informacion_compartida_finalizador->emisores_creados;
+    receptoresVivos = informacion_compartida_finalizador->receptores_vivos;
+
+    while (emisoresCreados  != 0 || receptoresVivos  != 0)
+    {
+        emisoresCreados = informacion_compartida_finalizador->emisores_creados;
+        receptoresVivos = informacion_compartida_finalizador->receptores_vivos;
+    }
+    
+
     // Eliminar la región de memoria compartida
+
     if (shm_unlink(nombre_buffer) == -1)
     {
         perror("Error al eliminar la región de memoria compartida");
         exit(1);
     }
     printf("Región de memoria compartida eliminada\n");
+    
+
 
     // Eliminando semaforos
     sem_destroy(sem_emisores);

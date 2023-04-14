@@ -38,6 +38,11 @@ int *puntero_mem_compartida;
 int cantidadCeldas;
 int llave = -1;
 
+int descriptor_global;
+char buffer_name_global[50];
+int tamano_global;
+
+
 int main(int argc, char *argv[])
 {
     signal(SIGINT, finalizarSignal);
@@ -58,6 +63,7 @@ int main(int argc, char *argv[])
         if (strcmp(argv[i], "-n") == 0)
         {
             strcpy(nombre_buffer, argv[i + 1]);
+            strcpy(buffer_name_global, argv[i + 1]);
 
             strcpy(nombre_sem_emisores, nombre_buffer);
             strcat(nombre_sem_emisores, "_emisor");
@@ -151,6 +157,7 @@ int obtenerValoresCompartidos(char *nombreMemComp)
 
     // abrir o crear la memoria compartida
     memoria_compartida_descriptor = shm_open(nombreMemComp, O_RDWR, S_IRWXU);
+    descriptor_global = memoria_compartida_descriptor;
 
     // verificar si la llamada fue exitosa
     if (memoria_compartida_descriptor < 0)
@@ -168,6 +175,7 @@ int obtenerValoresCompartidos(char *nombreMemComp)
 
     // obtener el tamaño de la memoria compartida
     int size = sb.st_size;
+    tamano_global = size;
 
     puntero_mem_compartida = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memoria_compartida_descriptor, 0);
     informacion_compartida_emisor = (struct informacionCompartida *)puntero_mem_compartida;
@@ -301,10 +309,35 @@ void ejecutar(void)
 void finalizarSignal(int sig) {
     finalizar();
 }
+
 void finalizar(void) {
     printf("Finalizando emisor.\n");
+
     sem_wait(sem_info_compartida);
     informacion_compartida_emisor->emisores_vivos --;
     sem_post(sem_info_compartida);
+
+    // Cierro los semaforos
+    sem_close(sem_emisores);
+    sem_close(sem_receptores);
+    sem_close(sem_info_compartida);
+    
+    /*
+    // Unlink semaforos
+    sem_unlink(strcat(buffer_name_global, "_emisor"));
+    sem_unlink(strcat(buffer_name_global, "_receptor"));
+    sem_unlink(strcat(buffer_name_global, "_info"));
+*/
+
+    // Liberar memoria compartida
+    if (munmap(puntero_mem_compartida, tamano_global) == -1) {
+        perror("Error al liberar memoria compartida");
+        exit(0);
+    }
+    close(descriptor_global);
+    
+    shm_unlink(buffer_name_global);
+    
+
     exit(0);
 }
