@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include "informacionCompartida.h"
 #include <sys/select.h>
+#include <time.h>
 #include "tools.h"
 
 // instancia del semaforo
@@ -65,6 +66,7 @@ int main(int argc, char *argv[])
     // Se asegura que los parametros fueron correctamente proporcionados y cambiados, sino falla
     if (strcmp(nombre_buffer, "") == 0)
     {
+        color("Rojo");
         printf("Error al determinar el nombre o la llave del emisor\n");
         return 1;
     }
@@ -81,6 +83,7 @@ int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores,
     sem_info_compartida = sem_open(nombre_sem_info_compartida, O_EXCL);
     if (sem_info_compartida == SEM_FAILED)
     {
+        color("Rojo");
         perror("Fallo al inicializar semaforo de informacion compartida\n");
         return 1;
     }
@@ -89,6 +92,7 @@ int inicializarSemaforos(char* nombre_sem_emisores, char* nombre_sem_receptores,
 
     if (sem_archivo_salida == SEM_FAILED)
     {
+        color("Rojo");
         perror("Fallo al inicializar semaforo del archivo de salida\n");
         return 1;
     }
@@ -113,6 +117,7 @@ int obtenerValoresCompartidos(char *nombreMemComp)
     // verificar si la llamada fue exitosa
     if (memoria_compartida_descriptor < 0)
     {
+        color("Rojo");
         perror("Error en el file descriptor de memoria compartida"); // imprimir un mensaje de error
         return 1;
     }
@@ -120,6 +125,7 @@ int obtenerValoresCompartidos(char *nombreMemComp)
     // obtener la información del archivo
     if (fstat(memoria_compartida_descriptor, &sb) == -1)
     {
+        color("Rojo");
         perror("Error al obtener la informacion del archivo");
         return 1;
     }
@@ -156,10 +162,18 @@ void ejecutar(char* nombre_buffer)
 
     finalizarRecursosCompartida(nombre_buffer);
     
+    time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+    color("Azul");
+    printf("****************************************************************************************\n");
     
-    printf("Emisores Vivos ---> %d\nEmisores Creados ---> %d\nReceptores Vivos ---> %d\nReceptores Creados ---> %d\nCaracteres Transferidos ---> %d\n Caracteres en el Buffer ---> %d\nMemoria utilizada ---> %d\n",
+    
+    printf("\033[0;36m Emisores Vivos:  \033[0;32m%d\n \033[0;36m Emisores Creados: \033[0;32m %d\n \033[0;36m Receptores Vivos:  \033[0;32m %d\n \033[0;36m Receptores Creados:  \033[0;32m%d\n \033[0;36m Caracteres Transferidos: \033[0;32m %d\n \033[0;36m Caracteres en el Buffer: \033[0;32m%d\n \033[0;36m Memoria utilizada: \033[0;32m %d\n",
             emisoresVivos, emisoresCreados, receptoresVivos, receptoresCreados,
             caracteresTransferidos, caracteresEnBuffer, memoria_utilizada);
+    color("Azul");
+    printf("****************************************************************************************\n");
+    color("Negro");
 
     
     ejecucion = 1;
