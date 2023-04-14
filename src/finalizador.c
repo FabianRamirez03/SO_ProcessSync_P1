@@ -158,10 +158,6 @@ void ejecutar(char* nombre_buffer)
     informacion_compartida_finalizador->terminacionProcesos = 1;
     sem_post(sem_info_compartida);
 
-    ejecucion = 1;
-
-    finalizarRecursosCompartida(nombre_buffer);
-    
     time_t t = time(NULL);
     struct tm *tm_info = localtime(&t);
     color("Azul");
@@ -175,8 +171,12 @@ void ejecutar(char* nombre_buffer)
     printf("****************************************************************************************\n");
     color("Negro");
 
-    
+
     ejecucion = 1;
+
+    finalizarRecursosCompartida(nombre_buffer);
+    
+
     
 }
 
