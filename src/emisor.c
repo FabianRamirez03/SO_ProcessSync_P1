@@ -10,6 +10,8 @@
 #include "informacionCompartida.h"
 #include <sys/select.h>
 #include "tools.h"
+#include <time.h>
+#include <signal.h>
 
 // semaforos por inicializar
 sem_t *sem_emisores;
@@ -21,6 +23,9 @@ int inicializarSemaforos(char *nombre_sem_emisores, char *nombre_sem_receptores,
 int obtenerValoresCompartidos(char *nombreMemComp);
 void ejecutar(void);
 int modoEjecucion(int modo);
+void finalizarSignal(int sig);
+void finalizar(void);
+
 
 // variables para lectura
 int indiceLectura;
@@ -33,8 +38,14 @@ int *puntero_mem_compartida;
 int cantidadCeldas;
 int llave = -1;
 
+int descriptor_global;
+char buffer_name_global[50];
+int tamano_global;
+
+
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, finalizarSignal);
     // Inicializa las variables
     char nombre_buffer[50];
     char nombre_sem_emisores[50];
@@ -52,6 +63,7 @@ int main(int argc, char *argv[])
         if (strcmp(argv[i], "-n") == 0)
         {
             strcpy(nombre_buffer, argv[i + 1]);
+            strcpy(buffer_name_global, argv[i + 1]);
 
             strcpy(nombre_sem_emisores, nombre_buffer);
             strcat(nombre_sem_emisores, "_emisor");
@@ -145,6 +157,7 @@ int obtenerValoresCompartidos(char *nombreMemComp)
 
     // abrir o crear la memoria compartida
     memoria_compartida_descriptor = shm_open(nombreMemComp, O_RDWR, S_IRWXU);
+    descriptor_global = memoria_compartida_descriptor;
 
     // verificar si la llamada fue exitosa
     if (memoria_compartida_descriptor < 0)
@@ -162,6 +175,7 @@ int obtenerValoresCompartidos(char *nombreMemComp)
 
     // obtener el tamaño de la memoria compartida
     int size = sb.st_size;
+    tamano_global = size;
 
     puntero_mem_compartida = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, memoria_compartida_descriptor, 0);
     informacion_compartida_emisor = (struct informacionCompartida *)puntero_mem_compartida;
@@ -174,7 +188,7 @@ int modoEjecucion(int modo)
     int ejecucion = informacion_compartida_emisor->terminacionProcesos;
     if (modo == 1)
     {
-        printf("Entra modo Automatico\n");
+        printf("Modo Automatico\n*****************************\n");
 
         while (ejecucion == 0)
         {
@@ -182,30 +196,20 @@ int modoEjecucion(int modo)
             ejecutar();
             ejecucion = informacion_compartida_emisor->terminacionProcesos;
         }
+        finalizar();
     }
 
     else
     {
-        printf("Modo Manual\n");
-        /*
-        initscr(); // Inicializa la pantalla de curses
-        cbreak(); // Deshabilita el buffer de entrada de línea
-        noecho(); // Deshabilita la devolución automática de teclas
-
-        int c = getch(); // Espera la entrada del usuario
-
-        endwin(); // Restaura la configuración original de la terminal
-
-        printf("La tecla presionada fue %c\n", c);
-        */
-
-        // Configurar la estructura para monitorear STDIN_FILENO
+        printf("Modo Manual\n*****************************\n");
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(STDIN_FILENO, &fds);
 
         while (ejecucion == 0)
         {
+            ejecucion = informacion_compartida_emisor->terminacionProcesos;
+            printf("Ejecucion: %d\n", ejecucion);
             // Monitorear la entrada estándar y la salida estándar
             int ready = select(STDIN_FILENO + 1, &fds, NULL, NULL, NULL);
             if (ready == -1)
@@ -240,6 +244,7 @@ int modoEjecucion(int modo)
                 }
             }
         }
+        finalizar();
     }
 }
 
@@ -264,6 +269,7 @@ void ejecutar(void)
 		sem_getvalue(sem_emisores, &emisores);
 		sem_getvalue(sem_receptores, &recep);
 
+        color("Negro");
 		printf("Valor del semaforo emisores antes: %d\n", emisores);
 		printf("Valor del semaforo receptores antes: %d\n", recep);
 
@@ -284,6 +290,54 @@ void ejecutar(void)
 		printf("Valor del semaforo emisores despues: %d\n", emisores);
 		printf("Valor del semaforo receptores despues: %d\n", recep);
 
-        printf("*************\nLLave 0x%x \n,Letra original: %c en hexa: 0x%x\nLetra encriptada: %c\nContador: %d\nEspacio escritura: %d\nBuffer: %s\n*************", llave, letra, letra, letraEncriptada, contador, espacioEscritura, buffer);
+        time_t t = time(NULL);
+        struct tm *tm_info = localtime(&t);
+        color("Azul");
+        printf("****************************************************************************************\n");
+
+        color("Morado");
+        printf("  %s ",asctime(tm_info));
+
+        printf("\033[0;36m Llave: \033[0;32m 0x%x \n\033[0;36m  Letra original: \033[0;32m %c (0x%x)\n \033[0;36m Letra encriptada: \033[0;32m %c (0x%x) \n \033[0;36m Índice: \033[0;32m%d\n \033[0;36m Espacio escritura: \033[0;32m%d\n \033[0;36m Buffer: \033[0;32m%s\n", llave, letra, letra, letraEncriptada, letraEncriptada,  contador, espacioEscritura, buffer);
+        color("Azul");
+        printf("****************************************************************************************\n");
+        color("Negro");
     }
+}
+
+
+void finalizarSignal(int sig) {
+    finalizar();
+}
+
+void finalizar(void) {
+    printf("Finalizando emisor.\n");
+
+    sem_wait(sem_info_compartida);
+    informacion_compartida_emisor->emisores_vivos --;
+    sem_post(sem_info_compartida);
+
+    // Cierro los semaforos
+    sem_close(sem_emisores);
+    sem_close(sem_receptores);
+    sem_close(sem_info_compartida);
+    
+    /*
+    // Unlink semaforos
+    sem_unlink(strcat(buffer_name_global, "_emisor"));
+    sem_unlink(strcat(buffer_name_global, "_receptor"));
+    sem_unlink(strcat(buffer_name_global, "_info"));
+*/
+
+    // Liberar memoria compartida
+    if (munmap(puntero_mem_compartida, tamano_global) == -1) {
+        perror("Error al liberar memoria compartida");
+        exit(0);
+    }
+    close(descriptor_global);
+    
+    shm_unlink(buffer_name_global);
+    
+
+    exit(0);
 }

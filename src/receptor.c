@@ -8,8 +8,10 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include "informacionCompartida.h"
-#include <curses.h> //talvez quitar
 #include <sys/select.h>
+#include "tools.h"
+#include <time.h>
+#include <signal.h>
 
 
 // semaforos por inicializar
@@ -24,6 +26,8 @@ int obtenerValoresCompartidos(char *nombreMemComp);
 int ejecutar(void);
 int modoEjecucion(int modo);
 int actualizarArchivoSalida(int i, char letra);
+void finalizarSignal(int sig);
+void finalizar(void);
 
 
 // variables para lectura
@@ -39,12 +43,14 @@ int llave = -1;
 
 int main(int argc, char *argv[])
 {
+    signal(SIGINT, finalizarSignal);
     // Inicializa las variables
     char nombre_buffer[50];
     char nombre_sem_emisores[50];
     char nombre_sem_receptores[50];
 	char nombre_sem_archivo_salida[50];
     char nombre_sem_info_compartida[50];
+    color("Negro");
     // Inicializa los parametros a valores incorrectos que deberan ser cambiados
     strcpy(nombre_buffer, "");
 
@@ -90,9 +96,7 @@ int main(int argc, char *argv[])
         printf("Error al determinar el nombre o la llave del emisor\n");
         return 1;
     }
-	printf("Se procede a inicializar los semaforos\n");
     inicializarSemaforos(nombre_sem_emisores, nombre_sem_receptores, nombre_sem_archivo_salida, nombre_sem_info_compartida);
-	printf("Se inicializan semaforos\n");
     // se toma el control del semaforo para aumentar el contador de creacion de emisores
     sem_wait(sem_info_compartida);
 	obtenerValoresCompartidos(nombre_buffer);
@@ -180,7 +184,7 @@ int modoEjecucion(int modo)
     int ejecucion = informacion_compartida_receptor->terminacionProcesos;
     if (modo == 1)
     {
-        printf("Entra modo Automatico\n");
+        printf("Modo Automatico\n*****************************\n");
 
         while (ejecucion == 0)
         {
@@ -188,31 +192,21 @@ int modoEjecucion(int modo)
             ejecutar();
             ejecucion = informacion_compartida_receptor->terminacionProcesos;
         }
-		return 0;
+        finalizar();
     }
 
     else
     {
-        printf("Modo Manual\n");
-        /*
-        initscr(); // Inicializa la pantalla de curses
-        cbreak(); // Deshabilita el buffer de entrada de línea
-        noecho(); // Deshabilita la devolución automática de teclas
-
-        int c = getch(); // Espera la entrada del usuario
-
-        endwin(); // Restaura la configuración original de la terminal
-
-        printf("La tecla presionada fue %c\n", c);
-        */
-
-        // Configurar la estructura para monitorear STDIN_FILENO
+        printf("Modo Manual\n*****************************\n");
         fd_set fds;
         FD_ZERO(&fds);
         FD_SET(STDIN_FILENO, &fds);
 
         while (ejecucion == 0)
         {
+            
+            ejecucion = informacion_compartida_receptor->terminacionProcesos;
+            printf("Ejecucion: %d\n", ejecucion);
             // Monitorear la entrada estándar y la salida estándar
             int ready = select(STDIN_FILENO + 1, &fds, NULL, NULL, NULL);
             if (ready == -1)
@@ -238,7 +232,7 @@ int modoEjecucion(int modo)
                 }
                 else if (input[0] == 'x')
                 {
-                    printf("Se deberia de terminar el proceso\n");
+                    finalizar();
                 }
                 
                 else
@@ -247,7 +241,7 @@ int modoEjecucion(int modo)
                 }
             }
         }
-		return 0;
+		finalizar();
     }
 }
 
@@ -257,7 +251,13 @@ int ejecutar(void)
     int espacioLectura= 0;
     char letra;
     char letraEncriptada;
-	printf("*************************************\n");
+	time_t t = time(NULL);
+    struct tm *tm_info = localtime(&t);
+    color("Azul");
+    printf("****************************************************************************************\n");
+
+    color("Morado");
+    printf("  %s ",asctime(tm_info));
     // logica de lectura y escritura con semaforos
     sem_wait(sem_info_compartida);
     contador_receptores = informacion_compartida_receptor->contador_receptores;
@@ -267,7 +267,7 @@ int ejecutar(void)
 	}
     sem_post(sem_info_compartida);
 
-	printf("contador Receptores %d\nEspacio Lectura %d\nTamano archivo %d\n",contador_receptores, espacioLectura, tamanioArchivo);
+	printf("\033[0;36m Contador Receptores: \033[0;32m%d\n \033[0;36m Espacio Lectura: \033[0;32m%d\n \033[0;36m Tamaño archivo: \033[0;32m%d\n",contador_receptores, espacioLectura, tamanioArchivo);
 
     if (contador_receptores < tamanioArchivo)
     {	
@@ -277,8 +277,8 @@ int ejecutar(void)
 		sem_getvalue(sem_emisores, &emisores);
 		sem_getvalue(sem_receptores, &recep);
 
-		printf("Valor del semaforo emisores antes: %d\n", emisores);
-		printf("Valor del semaforo receptores antes: %d\n", recep);
+		printf("\033[0;36m  Valor del semaforo emisores antes: \033[0;32m%d\n", emisores);
+		printf("\033[0;36m  Valor del semaforo receptores antes: \033[0;32m%d\n", recep);
         sem_post(sem_emisores);
         // post al semaforo de receptores
         sem_wait(sem_receptores);
@@ -286,24 +286,26 @@ int ejecutar(void)
 
 		// Obtengo la letra encriptada del buffer
 		letraEncriptada = buffer[espacioLectura];
-		printf("Letra encriptada %c\n", letraEncriptada);
+		printf("\033[0;36m  Letra encriptada: \033[0;32m %c\n", letraEncriptada);
 		// Vacio el buffer
         buffer[espacioLectura] = ' ';
 
 		// desencripto la letra
         letra = letraEncriptada ^ llave;
 
-		printf("Letra desencriptada %c\n", letra);
+		printf("\033[0;36m  Letra desencriptada: \033[0;32m %c\n", letra);
 
 		actualizarArchivoSalida(contador_receptores, letra);
 
 		sem_getvalue(sem_emisores, &emisores);
 		sem_getvalue(sem_receptores, &recep);
 
-		printf("Valor del semaforo emisores despues: %d\n", emisores);
-		printf("Valor del semaforo receptores despues: %d\n", recep);
+		printf("\033[0;36m  Valor del semaforo emisores despues: \033[0;32m %d\n", emisores);
+		printf("\033[0;36m  Valor del semaforo receptores despues: \033[0;32m%d\n", recep);
 
-       printf("*************************************\n");
+        color("Azul");
+        printf("****************************************************************************************\n");
+        color("Negro");
 		return 0;
 	}
 }
@@ -312,7 +314,7 @@ int actualizarArchivoSalida(int i, char letra){
 	FILE *file;
 	int file_size = tamanioArchivo;
 	
-	printf("Espacio a ingresar el dato: %d\n", i);
+	printf("\033[0;36m  Índice: \033[0;32m%d\n", i);
 
 	// Modifica el carater en el archivo de salida
 	sem_wait(sem_archivo_salida);
@@ -331,13 +333,22 @@ int actualizarArchivoSalida(int i, char letra){
 
 	fseek(file, i, SEEK_SET);
     fputc(letra, file);
-
 	fclose(file);
 
 	// Libera el semaforo
 	sem_post(sem_archivo_salida);
 
-
-
 	return 0;
+}
+
+void finalizarSignal(int sig) {
+    finalizar();
+}
+
+void finalizar(void) {
+    printf("Finalizando receptor.\n");
+    sem_wait(sem_info_compartida);
+    informacion_compartida_receptor->receptores_vivos --;
+    sem_post(sem_info_compartida);
+    exit(0);
 }
